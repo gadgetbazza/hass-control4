@@ -364,14 +364,24 @@ class RefreshTokensObject:
     async def _refresh_token_with_retry(self):
         try:
             await refresh_tokens(self.hass, self.entry)
-        except ConfigEntryNotReady:
-            self._schedule_refresh_retry()
+        except ConfigEntryAuthFailed as exception:
+            _LOGGER.error("Token refresh was refused, reauthentication needed: %s", exception)
+            self.entry.async_start_reauth(self.hass)
+        except Exception as exception:  # noqa: BLE001
+            # Any failure must schedule a retry. Otherwise refreshing stops for good
+            # and the director token expires, leaving the integration dead until reloaded.
+            self._schedule_refresh_retry(exception)
 
-    def _schedule_refresh_retry(self):
+    def _schedule_refresh_retry(self, exception: Exception):
         self.retries += 1
         # exponential backoff with jitter
         delay = random.uniform(0, min(2**self.retries, RETRY_BACKOFF_MAX_SEC))
-        _LOGGER.warning("Token refresh failed, trying again in %s seconds", delay)
+        _LOGGER.warning(
+            "Token refresh failed (%s: %s), trying again in %.1f seconds",
+            type(exception).__name__,
+            exception,
+            delay,
+        )
         entry_data = self.hass.data[DOMAIN][self.entry.entry_id]
         entry_data[CONF_CANCEL_TOKEN_REFRESH_CALLBACK] = async_call_later(
             hass=self.hass,

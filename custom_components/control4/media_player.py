@@ -253,7 +253,7 @@ class Control4Room(Control4CoordinatorEntity, MediaPlayerEntity):  # type: ignor
             self._current_source is not None
             and self._current_source.idx != updated_source_idx
         ):
-            self._current_source.group_members.remove(self.entity_id)
+            self._current_source.group_members.discard(self.entity_id)
 
         if updated_source_idx in self._sources:
             self._current_source = self._sources[updated_source_idx]
@@ -438,7 +438,7 @@ class Control4Room(Control4CoordinatorEntity, MediaPlayerEntity):  # type: ignor
         """Select a new source."""
         current_source = self._get_current_playing_device_id()
         if current_source in self._sources:
-            self._sources[current_source].group_members.remove(self.entity_id)
+            self._sources[current_source].group_members.discard(self.entity_id)
         for avail_source in self._sources.values():
             if avail_source.name == source:
                 audio_only = _SourceType.VIDEO not in avail_source.source_type
